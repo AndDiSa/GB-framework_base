@@ -235,6 +235,12 @@ class PackageManagerService extends IPackageManager.Stub {
     // This is the object monitoring mDrmAppPrivateInstallDir.
     final FileObserver mDrmAppInstallObserver;
 
+    // This is the object monitoring mSdExtInstallDir.
+    final FileObserver mSdExtInstallObserver;
+
+    // This is the object monitoring mDrmSdExtPrivateInstallDir.
+    final FileObserver mDrmSdExtInstallObserver;
+
     // Used for priviledge escalation.  MUST NOT BE CALLED WITH mPackages
     // LOCK HELD.  Can be called with mInstallLock held.
     final Installer mInstaller;
@@ -244,10 +250,13 @@ class PackageManagerService extends IPackageManager.Stub {
     final File mVendorAppDir;
     final File mAppInstallDir;
     final File mDalvikCacheDir;
+    final File mSdExtInstallDir;
+    final File mSdExtDalvikCacheDir;
 
     // Directory containing the private parts (e.g. code and non-resource assets) of forward-locked
     // apps.
     final File mDrmAppPrivateInstallDir;
+    final File mDrmSdExtPrivateInstallDir;
 
     // ----------------------------------------------------------------
 
@@ -681,7 +690,8 @@ class PackageManagerService extends IPackageManager.Stub {
     
     static boolean installOnSd(int flags) {
         if (((flags & PackageManager.INSTALL_FORWARD_LOCK) != 0) ||
-                ((flags & PackageManager.INSTALL_INTERNAL) != 0)) {
+                ((flags & PackageManager.INSTALL_INTERNAL) != 0) ||
+                ((flags & PackageManager.INSTALL_SDEXT) != 0)) {
             return false;
         }
         if ((flags & PackageManager.INSTALL_EXTERNAL) != 0) {
@@ -785,8 +795,11 @@ class PackageManagerService extends IPackageManager.Stub {
 
             File dataDir = Environment.getDataDirectory();
             mAppDataDir = new File(dataDir, "data");
+            File sdExtDir = Environment.getSdExtDirectory();
+            mSdExtInstallDir = new File(sdExtDir, "app");
             mSecureAppDataDir = new File(dataDir, "secure/data");
             mDrmAppPrivateInstallDir = new File(dataDir, "app-private");
+            mDrmSdExtPrivateInstallDir = new File(sdExtDir, "app-private");
 
             if (mInstaller == null) {
                 // Make sure these dirs exist, when we are running in
@@ -797,6 +810,9 @@ class PackageManagerService extends IPackageManager.Stub {
                 mAppDataDir.mkdirs();
                 mSecureAppDataDir.mkdirs();
                 mDrmAppPrivateInstallDir.mkdirs();
+                // TODO check is sd-ext is mounted
+                mSdExtInstallDir.mkdirs();
+                mDrmSdExtPrivateInstallDir.mkdirs();
             }
 
             readPermissions();
@@ -819,6 +835,7 @@ class PackageManagerService extends IPackageManager.Stub {
 
             mFrameworkDir = new File(Environment.getRootDirectory(), "framework");
             mDalvikCacheDir = new File(dataDir, "dalvik-cache");
+            mSdExtDalvikCacheDir = new File(sdExtDir, "dalvik-cache");
 
             if (mInstaller != null) {
                 boolean didDexOpt = false;
@@ -920,6 +937,19 @@ class PackageManagerService extends IPackageManager.Stub {
                             }
                         }
                     }
+                    if (isA2SDActive()) {
+                        files = mSdExtDalvikCacheDir.list();
+                        if (files != null) {
+                            for (int i=0; i<files.length; i++) {
+                                String fn = files[i];
+                                if (fn.startsWith("sd-ext@app@")
+                                        || fn.startsWith("sd-ext@app-private@")) {
+                                    Log.i(TAG, "Pruning dalvik file: " + fn);
+                                    (new File(mSdExtDalvikCacheDir, fn)).delete();
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -992,13 +1022,34 @@ class PackageManagerService extends IPackageManager.Stub {
             mAppInstallObserver = new AppDirObserver(
                 mAppInstallDir.getPath(), OBSERVER_EVENTS, false);
             mAppInstallObserver.startWatching();
-            scanDirLI(mAppInstallDir, 0, scanMode, 0);
+            scanDirLI(mAppInstallDir,
+                      0,
+                      scanMode,
+                      0);
 
             mDrmAppInstallObserver = new AppDirObserver(
                 mDrmAppPrivateInstallDir.getPath(), OBSERVER_EVENTS, false);
             mDrmAppInstallObserver.startWatching();
-            scanDirLI(mDrmAppPrivateInstallDir, PackageParser.PARSE_FORWARD_LOCK,
-                    scanMode, 0);
+            scanDirLI(mDrmAppPrivateInstallDir,
+                      PackageParser.PARSE_FORWARD_LOCK,
+                      scanMode,
+                      0);
+
+            mSdExtInstallObserver = new AppDirObserver(
+                mSdExtInstallDir.getPath(), OBSERVER_EVENTS, false);
+            mSdExtInstallObserver.startWatching();
+            scanDirLI(mSdExtInstallDir,
+                      PackageParser.PARSE_ON_SDEXT,
+                      scanMode,
+                      0);
+
+            mDrmSdExtInstallObserver = new AppDirObserver(
+                mDrmSdExtPrivateInstallDir.getPath(), OBSERVER_EVENTS, false);
+            mDrmSdExtInstallObserver.startWatching();
+            scanDirLI(mDrmSdExtPrivateInstallDir,
+                      PackageParser.PARSE_ON_SDEXT & PackageParser.PARSE_FORWARD_LOCK,
+                      scanMode,
+                      0);
 
             EventLog.writeEvent(EventLogTags.BOOT_PROGRESS_PMS_SCAN_END,
                     SystemClock.uptimeMillis());
@@ -4552,6 +4603,11 @@ class PackageManagerService extends IPackageManager.Stub {
         private final boolean mIsRom;
     }
 
+    public boolean isA2SDActive() {
+        return SystemProperties.getBoolean("cm.a2sd.active", false) ||
+               SystemProperties.getBoolean("cm.a2sd.force", false)  ;
+    }
+
     /* Called when a downloaded package installation has been confirmed by the user */
     public void installPackage(
             final Uri packageURI, final IPackageInstallObserver observer, final int flags) {
@@ -4727,6 +4783,7 @@ class PackageManagerService extends IPackageManager.Stub {
             String packageName = pkgLite.packageName;
             int installLocation = pkgLite.installLocation;
             boolean onSd = (flags & PackageManager.INSTALL_EXTERNAL) != 0;
+            boolean onSdext = (flags & PackageManager.INSTALL_SDEXT) != 0;
             synchronized (mPackages) {
                 PackageParser.Package pkg = mPackages.get(packageName);
                 if (pkg != null) {
@@ -4743,16 +4800,24 @@ class PackageManagerService extends IPackageManager.Stub {
                                 // Install flag overrides everything.
                                 return PackageHelper.RECOMMEND_INSTALL_EXTERNAL;
                             }
+                            if (onSdext) {
+                                // Install flag overrides everything.
+                                return PackageHelper.RECOMMEND_INSTALL_SDEXT;
+                            }
                             // If current upgrade specifies particular preference
                             if (installLocation == PackageInfo.INSTALL_LOCATION_INTERNAL_ONLY) {
                                 // Application explicitly specified internal.
                                 return PackageHelper.RECOMMEND_INSTALL_INTERNAL;
                             } else if (installLocation == PackageInfo.INSTALL_LOCATION_PREFER_EXTERNAL) {
                                 // App explictly prefers external. Let policy decide
+                            } else if (installLocation == PackageInfo.INSTALL_LOCATION_PREFER_SDEXT) {
+                                return PackageHelper.RECOMMEND_INSTALL_SDEXT;
                             } else {
                                 // Prefer previous location
                                 if (isExternal(pkg)) {
                                     return PackageHelper.RECOMMEND_INSTALL_EXTERNAL;
+                                } else if (isSdExt(pkg)) {
+                                    return PackageHelper.RECOMMEND_INSTALL_SDEXT;
                                 }
                                 return PackageHelper.RECOMMEND_INSTALL_INTERNAL;
                             }
@@ -4768,6 +4833,9 @@ class PackageManagerService extends IPackageManager.Stub {
             if (onSd) {
                 return PackageHelper.RECOMMEND_INSTALL_EXTERNAL;
             }
+            if (onSdext) {
+                return PackageHelper.RECOMMEND_INSTALL_SDEXT;
+            }
             return pkgLite.recommendedInstallLocation;
         }
 
@@ -4782,9 +4850,18 @@ class PackageManagerService extends IPackageManager.Stub {
             boolean fwdLocked = (flags & PackageManager.INSTALL_FORWARD_LOCK) != 0;
             boolean onSd = (flags & PackageManager.INSTALL_EXTERNAL) != 0;
             boolean onInt = (flags & PackageManager.INSTALL_INTERNAL) != 0;
+            boolean onSdext = (flags & PackageManager.INSTALL_SDEXT) != 0;
             if (onInt && onSd) {
                 // Check if both bits are set.
                 Slog.w(TAG, "Conflicting flags specified for installing on both internal and external");
+                ret = PackageManager.INSTALL_FAILED_INVALID_INSTALL_LOCATION;
+            } else if (onInt && onSdext) {
+                // Check if both bits are set.
+                Slog.w(TAG, "Conflicting flags specified for installing on both internal and sd-ext");
+                ret = PackageManager.INSTALL_FAILED_INVALID_INSTALL_LOCATION;
+            } else if (onSd && onSdext) {
+                // Check if both bits are set.
+                Slog.w(TAG, "Conflicting flags specified for installing on both externaland sd-ext");
                 ret = PackageManager.INSTALL_FAILED_INVALID_INSTALL_LOCATION;
             } else if (fwdLocked && onSd) {
                 // Check for forward locked apps
@@ -4815,17 +4892,24 @@ class PackageManagerService extends IPackageManager.Stub {
                 } else {
                     // Override with defaults if needed.
                     loc = installLocationPolicy(pkgLite, flags);
-                    if (!onSd && !onInt) {
+                    if (!onSd && !onInt && !onSdext) {
                         // Override install location with flags
                         if (loc == PackageHelper.RECOMMEND_INSTALL_EXTERNAL) {
                             // Set the flag to install on external media.
                             flags |= PackageManager.INSTALL_EXTERNAL;
+                            flags &= ~PackageManager.INSTALL_INTERNAL;
+                            flags &= ~PackageManager.INSTALL_SDEXT;
+                        } else if (loc == PackageHelper.RECOMMEND_INSTALL_SDEXT) {
+                            // Set the flag to install on external media.
+                            flags |= PackageManager.INSTALL_SDEXT;
+                            flags &= ~PackageManager.INSTALL_EXTERNAL;
                             flags &= ~PackageManager.INSTALL_INTERNAL;
                         } else {
                             // Make sure the flag for installing on external
                             // media is unset
                             flags |= PackageManager.INSTALL_INTERNAL;
                             flags &= ~PackageManager.INSTALL_EXTERNAL;
+                            flags &= ~PackageManager.INSTALL_SDEXT;
                         }
                     }
                 }
@@ -4991,6 +5075,7 @@ class PackageManagerService extends IPackageManager.Stub {
         String resourceFileName;
         String libraryPath;
         boolean created = false;
+        boolean InstallOnSdExt = ((flags & PackageManager.INSTALL_SDEXT) != 0);
 
         FileInstallArgs(InstallParams params) {
             super(params.packageURI, params.observer,
@@ -5008,7 +5093,11 @@ class PackageManagerService extends IPackageManager.Stub {
 
         FileInstallArgs(Uri packageURI, String pkgName, String dataDir) {
             super(packageURI, null, 0, null);
-            installDir = isFwdLocked() ? mDrmAppPrivateInstallDir : mAppInstallDir;
+            if (InstallOnSdExt) {
+                installDir = isFwdLocked() ? mDrmSdExtPrivateInstallDir : mSdExtInstallDir;
+            } else {
+                installDir = isFwdLocked() ? mDrmAppPrivateInstallDir : mAppInstallDir;
+            }
             String apkName = getNextCodePath(null, pkgName, ".apk");
             codeFileName = new File(installDir, apkName + ".apk").getPath();
             resourceFileName = getResourcePathFromCodePath();
@@ -5030,7 +5119,11 @@ class PackageManagerService extends IPackageManager.Stub {
         }
 
         void createCopyFile() {
-            installDir = isFwdLocked() ? mDrmAppPrivateInstallDir : mAppInstallDir;
+            if (InstallOnSdExt) {
+                installDir = isFwdLocked() ? mDrmSdExtPrivateInstallDir : mSdExtInstallDir;
+            } else {
+                installDir = isFwdLocked() ? mDrmAppPrivateInstallDir : mAppInstallDir;
+            }
             codeFileName = createTempPackageFile(installDir).getPath();
             resourceFileName = getResourcePathFromCodePath();
             created = true;
@@ -5125,7 +5218,11 @@ class PackageManagerService extends IPackageManager.Stub {
             String codePath = getCodePath();
             if ((flags & PackageManager.INSTALL_FORWARD_LOCK) != 0) {
                 String apkNameOnly = getApkName(codePath);
-                return mAppInstallDir.getPath() + "/" + apkNameOnly + ".zip";
+                if (InstallOnSdExt) {
+                    return mSdExtInstallDir.getPath() + "/" + apkNameOnly + ".zip";
+                } else {
+                    return mAppInstallDir.getPath() + "/" + apkNameOnly + ".zip";
+                }
             } else {
                 return codePath;
             }
@@ -5491,6 +5588,14 @@ class PackageManagerService extends IPackageManager.Stub {
         }
         return codePath.substring(sidx+1, eidx);
     }
+    static int getApkLoc(String codePath) {
+        String ApkLoc = codePath.substring(1);
+        int idx = ApkLoc.indexOf('/');
+        if (codePath.substring(1, idx+1).equals("sd-ext")) {
+            return 0;
+        }
+        return -1;
+    }
 
     class PackageInstalledInfo {
         String name;
@@ -5649,9 +5754,11 @@ class PackageManagerService extends IPackageManager.Stub {
                 }
                 // Parse old package
                 boolean oldOnSd = isExternal(deletedPackage);
+                boolean oldOnSdExt = isSdExt(deletedPackage);
                 int oldParseFlags  = mDefParseFlags | PackageParser.PARSE_CHATTY |
                         (isForwardLocked(deletedPackage) ? PackageParser.PARSE_FORWARD_LOCK : 0) |
-                        (oldOnSd ? PackageParser.PARSE_ON_SDCARD : 0);
+                        (oldOnSd ? PackageParser.PARSE_ON_SDCARD : 0) |
+                        (oldOnSdExt ? PackageParser.PARSE_ON_SDEXT : 0 );
                 int oldScanMode = (oldOnSd ? 0 : SCAN_MONITOR) | SCAN_UPDATE_SIGNATURE
                         | SCAN_UPDATE_TIME;
                 if (scanPackageLI(restoreFile, oldParseFlags, oldScanMode,
@@ -5767,8 +5874,14 @@ class PackageManagerService extends IPackageManager.Stub {
                      */
                     Slog.i(TAG, "dex file doesn't exist, skipping move: " + newPackage.mPath);
                 } else {
-                    Slog.e(TAG, "Couldn't rename dex file: " + newPackage.mPath);
-                    return PackageManager.INSTALL_FAILED_INSUFFICIENT_STORAGE;
+                    // if move dex fails, e.g. moving to /sd-ext, generate dex
+                    retCode = mInstaller.dexopt(newPackage.mPath,
+                                                newPackage.applicationInfo.uid,
+                                                !isForwardLocked(newPackage));
+                    if (retCode != 0) {
+                        Slog.e(TAG, "Couldn't rename dex file: " + newPackage.mPath);
+                        return PackageManager.INSTALL_FAILED_INSUFFICIENT_STORAGE;
+                    }
                 }
             }
         }
@@ -5821,6 +5934,7 @@ class PackageManagerService extends IPackageManager.Stub {
         File tmpPackageFile = new File(args.getCodePath());
         boolean forwardLocked = ((pFlags & PackageManager.INSTALL_FORWARD_LOCK) != 0);
         boolean onSd = ((pFlags & PackageManager.INSTALL_EXTERNAL) != 0);
+        boolean onSdext = ((pFlags & PackageManager.INSTALL_SDEXT) != 0);
         boolean replace = false;
         int scanMode = (onSd ? 0 : SCAN_MONITOR) | SCAN_FORCE_DEX | SCAN_UPDATE_SIGNATURE
                 | (newInstall ? SCAN_NEW_INSTALL : 0);
@@ -5830,7 +5944,8 @@ class PackageManagerService extends IPackageManager.Stub {
         // Retrieve PackageSettings and parse package
         int parseFlags = PackageParser.PARSE_CHATTY |
         (forwardLocked ? PackageParser.PARSE_FORWARD_LOCK : 0) |
-        (onSd ? PackageParser.PARSE_ON_SDCARD : 0);
+        (onSd ? PackageParser.PARSE_ON_SDCARD : 0) |
+        (onSdext ? PackageParser.PARSE_ON_SDEXT : 0);
         parseFlags |= mDefParseFlags;
         PackageParser pp = new PackageParser(tmpPackageFile.getPath());
         pp.setSeparateProcesses(mSeparateProcesses);
@@ -5926,7 +6041,8 @@ class PackageManagerService extends IPackageManager.Stub {
             }
             if (mInstaller != null) {
                 retCode = mInstaller.setForwardLockPerm(getApkName(newPackage.mPath),
-                        newPackage.applicationInfo.uid);
+                        newPackage.applicationInfo.uid,
+                        getApkLoc(newPackage.mPath));
             } else {
                 final int filePermissions =
                         FileUtils.S_IRUSR|FileUtils.S_IWUSR|FileUtils.S_IRGRP;
@@ -5954,6 +6070,10 @@ class PackageManagerService extends IPackageManager.Stub {
 
     private static boolean isExternal(PackageParser.Package pkg) {
         return (pkg.applicationInfo.flags & ApplicationInfo.FLAG_EXTERNAL_STORAGE) != 0;
+    }
+
+    private static boolean isSdExt(PackageParser.Package pkg) {
+        return (pkg.applicationInfo.flags & ApplicationInfo.FLAG_SDEXT_STORAGE) != 0;
     }
 
     private static boolean isSystemApp(PackageParser.Package pkg) {
@@ -6032,12 +6152,21 @@ class PackageManagerService extends IPackageManager.Stub {
             }
         };
         String tmpFilesList[] = mAppInstallDir.list(filter);
-        if(tmpFilesList == null) {
+        String tmpSdExtFilesList[] = mSdExtInstallDir.list(filter);
+        if(tmpFilesList == null && tmpSdExtFilesList == null) {
             return;
         }
-        for(int i = 0; i < tmpFilesList.length; i++) {
-            File tmpFile = new File(mAppInstallDir, tmpFilesList[i]);
-            tmpFile.delete();
+        if(tmpFilesList != null) {
+            for(int i = 0; i < tmpFilesList.length; i++) {
+                File tmpFile = new File(mAppInstallDir, tmpFilesList[i]);
+                tmpFile.delete();
+            }
+        }
+        if(tmpSdExtFilesList != null) {
+            for(int i = 0; i < tmpSdExtFilesList.length; i++) {
+                File tmpFile = new File(mSdExtInstallDir, tmpSdExtFilesList[i]);
+                tmpFile.delete();
+            }
         }
     }
 
@@ -6317,6 +6446,7 @@ class PackageManagerService extends IPackageManager.Stub {
         if (deleteCodeAndResources) {
             // TODO can pick up from PackageSettings as well
             int installFlags = isExternal(p) ? PackageManager.INSTALL_EXTERNAL : 0;
+            installFlags |= isSdExt(p) ? PackageManager.INSTALL_SDEXT : 0;
             installFlags |= isForwardLocked(p) ? PackageManager.INSTALL_FORWARD_LOCK : 0;
             outInfo.args = createInstallArgs(installFlags, applicationInfo.sourceDir,
                     applicationInfo.publicSourceDir, applicationInfo.nativeLibraryDir);
@@ -7713,6 +7843,7 @@ class PackageManagerService extends IPackageManager.Stub {
                     ApplicationInfo.FLAG_SYSTEM |
                     ApplicationInfo.FLAG_FORWARD_LOCK |
                     ApplicationInfo.FLAG_EXTERNAL_STORAGE |
+                    ApplicationInfo.FLAG_SDEXT_STORAGE |
                     ApplicationInfo.FLAG_NEVER_ENCRYPT);
         }
     }
@@ -9981,7 +10112,7 @@ class PackageManagerService extends IPackageManager.Stub {
                if (pkg.applicationInfo != null && isSystemApp(pkg)) {
                    Slog.w(TAG, "Cannot move system application");
                    returnCode = PackageManager.MOVE_FAILED_SYSTEM_PACKAGE;
-               } else if (pkg.applicationInfo != null && isForwardLocked(pkg)) {
+               } else if (pkg.applicationInfo != null && isForwardLocked(pkg) && !isSdExt(pkg)) {
                    Slog.w(TAG, "Cannot move forward locked app.");
                    returnCode = PackageManager.MOVE_FAILED_FORWARD_LOCKED;
                } else if (pkg.mOperationPending) {
@@ -9993,11 +10124,29 @@ class PackageManagerService extends IPackageManager.Stub {
                            (flags & PackageManager.MOVE_INTERNAL) != 0) {
                        Slog.w(TAG, "Ambigous flags specified for move location.");
                        returnCode = PackageManager.MOVE_FAILED_INVALID_LOCATION;
+                   } else if ((flags & PackageManager.MOVE_EXTERNAL_MEDIA) != 0 &&
+                           (flags & PackageManager.MOVE_SDEXT) != 0) {
+                       Slog.w(TAG, "Ambigous flags specified for move location.");
+                       returnCode = PackageManager.MOVE_FAILED_INVALID_LOCATION;
+                   } else if ((flags & PackageManager.MOVE_SDEXT) != 0 &&
+                           (flags & PackageManager.MOVE_INTERNAL) != 0) {
+                       Slog.w(TAG, "Ambigous flags specified for move location.");
+                       returnCode = PackageManager.MOVE_FAILED_INVALID_LOCATION;
                    } else {
-                       newFlags = (flags & PackageManager.MOVE_EXTERNAL_MEDIA) != 0 ?
-                               PackageManager.INSTALL_EXTERNAL : PackageManager.INSTALL_INTERNAL;
-                       currFlags = isExternal(pkg) ? PackageManager.INSTALL_EXTERNAL
-                               : PackageManager.INSTALL_INTERNAL;
+                       if (isExternal(pkg)) {
+                           currFlags = PackageManager.INSTALL_EXTERNAL;
+                       } else if (isSdExt(pkg)) {
+                           currFlags = PackageManager.INSTALL_SDEXT;
+                       } else {
+                           currFlags = PackageManager.INSTALL_INTERNAL;
+                       }
+                       if ((flags & PackageManager.MOVE_EXTERNAL_MEDIA) != 0) {
+                           newFlags = PackageManager.INSTALL_EXTERNAL;
+                       } else if ((flags & PackageManager.MOVE_SDEXT) != 0) {
+                           newFlags = PackageManager.INSTALL_SDEXT;
+                       } else {
+                           newFlags = PackageManager.INSTALL_INTERNAL;
+                       }
                        if (newFlags == currFlags) {
                            Slog.w(TAG, "No move required. Trying to move to same location");
                            returnCode = PackageManager.MOVE_FAILED_INVALID_LOCATION;
@@ -10111,8 +10260,13 @@ class PackageManagerService extends IPackageManager.Stub {
                                        // Set the application info flag correctly.
                                        if ((mp.flags & PackageManager.INSTALL_EXTERNAL) != 0) {
                                            pkg.applicationInfo.flags |= ApplicationInfo.FLAG_EXTERNAL_STORAGE;
+                                           pkg.applicationInfo.flags &= ~ApplicationInfo.FLAG_SDEXT_STORAGE;
+                                       } else if ((mp.flags & PackageManager.INSTALL_SDEXT)!= 0) {
+                                           pkg.applicationInfo.flags |= ApplicationInfo.FLAG_SDEXT_STORAGE;
+                                           pkg.applicationInfo.flags &= ~ApplicationInfo.FLAG_EXTERNAL_STORAGE;
                                        } else {
                                            pkg.applicationInfo.flags &= ~ApplicationInfo.FLAG_EXTERNAL_STORAGE;
+                                           pkg.applicationInfo.flags &= ~ApplicationInfo.FLAG_SDEXT_STORAGE;
                                        }
                                        ps.setFlags(pkg.applicationInfo.flags);
                                        mAppDirs.remove(oldCodePath);
@@ -10172,6 +10326,7 @@ class PackageManagerService extends IPackageManager.Stub {
        }
        if (loc == PackageHelper.APP_INSTALL_AUTO ||
                loc == PackageHelper.APP_INSTALL_INTERNAL ||
+               loc == PackageHelper.APP_INSTALL_SDEXT ||
                loc == PackageHelper.APP_INSTALL_EXTERNAL) {
            android.provider.Settings.System.putInt(mContext.getContentResolver(),
                    android.provider.Settings.Secure.DEFAULT_INSTALL_LOCATION, loc);
