@@ -4604,8 +4604,7 @@ class PackageManagerService extends IPackageManager.Stub {
     }
 
     public boolean isA2SDActive() {
-        return SystemProperties.getBoolean("cm.a2sd.active", false) ||
-               SystemProperties.getBoolean("cm.a2sd.force", false)  ;
+        return SystemProperties.getBoolean("magpie.a2sd.active", false);
     }
 
     /* Called when a downloaded package installation has been confirmed by the user */
