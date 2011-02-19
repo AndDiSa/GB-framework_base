@@ -1167,6 +1167,12 @@ sp<ISurface> SurfaceFlinger::createSurface(const sp<Client>& client, int pid,
             params->width = w;
             params->height = h;
             params->format = format;
+
+#ifdef NO_RGBX_8888
+            if (params->format == PIXEL_FORMAT_RGBX_8888)
+                params->format = PIXEL_FORMAT_RGBA_8888;
+#endif
+
             if (normalLayer != 0) {
                 Mutex::Autolock _l(mStateLock);
                 mLayerMap.add(surfaceHandle->asBinder(), normalLayer);
@@ -1191,18 +1197,9 @@ sp<Layer> SurfaceFlinger::createNormalSurface(
         format = PIXEL_FORMAT_RGBA_8888;
         break;
     case PIXEL_FORMAT_OPAQUE:
-#ifdef NO_RGBX_8888
-        format = PIXEL_FORMAT_RGB_565;
-#else
         format = PIXEL_FORMAT_RGBX_8888;
-#endif
         break;
     }
-
-#ifdef NO_RGBX_8888
-    if (format == PIXEL_FORMAT_RGBX_8888)
-        format = PIXEL_FORMAT_RGBA_8888;
-#endif
 
     sp<Layer> layer = new Layer(this, display, client);
     status_t err = layer->setBuffers(w, h, format, flags);
