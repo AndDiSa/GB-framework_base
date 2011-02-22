@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Patched by Sven Dawitz; Copyright (C) 2011 CyanogenMod Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +17,8 @@
 
 package com.android.systemui.statusbar.policy;
 
-import android.app.StatusBarManager;
 import android.app.AlertDialog;
+import android.app.StatusBarManager;
 import android.bluetooth.BluetoothA2dp;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothHeadset;
@@ -582,6 +583,24 @@ public class StatusBarPolicy {
         }
     };
 
+    private boolean mShowCmBattery;
+
+    class SettingsObserver extends ContentObserver {
+        SettingsObserver(Handler handler) {
+            super(handler);
+        }
+
+        void observe() {
+            ContentResolver resolver = mContext.getContentResolver();
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.STATUS_BAR_CM_BATTERY), false, this);
+        }
+
+        @Override public void onChange(boolean selfChange) {
+            updateSettings();
+        }
+    }
+
     public StatusBarPolicy(Context context) {
         mContext = context;
         mService = (StatusBarManager)context.getSystemService(Context.STATUS_BAR_SERVICE);
@@ -725,6 +744,7 @@ public class StatusBarPolicy {
         final int id = intent.getIntExtra("icon-small", 0);
         int level = intent.getIntExtra("level", 0);
         mService.setIcon("battery", id, level);
+        mService.setIconVisibility("battery", !mShowCmBattery);
 
         boolean plugged = intent.getIntExtra("plugged", 0) != 0;
         level = intent.getIntExtra("level", -1);
@@ -1466,5 +1486,13 @@ public class StatusBarPolicy {
                 break;
             }
         }
+    }
+
+    private void updateSettings(){
+        ContentResolver resolver = mContext.getContentResolver();
+
+        mShowCmBattery = (Settings.System.getInt(resolver,
+                Settings.System.STATUS_BAR_CM_BATTERY, 0) == 1);
+        mService.setIconVisibility("battery", !mShowCmBattery);
     }
 }
