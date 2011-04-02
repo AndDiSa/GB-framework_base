@@ -421,4 +421,11 @@ public class Environment {
         String path = System.getenv(variableName);
         return path == null ? new File(defaultPath) : new File(path);
     }
+    /**
+     * Returns if sd-ext is mounted or not
+     */
+    public static boolean IsSdExtMounted() {
+       // TODO , move this somewhere more appropriate , and have it check vold and not some prop
+       return android.os.SystemProperties.getBoolean("magpie.a2sd.active", false);
+    }
 }

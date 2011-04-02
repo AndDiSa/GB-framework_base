@@ -426,8 +426,8 @@ public class DefaultContainerService extends IntentService {
                     .getContentResolver(),
                     Settings.Secure.DEFAULT_INSTALL_LOCATION,
                     PackageHelper.APP_INSTALL_AUTO);
-            // TODO check sd-ext is mounted
-            if (installPreference == PackageHelper.APP_INSTALL_SDEXT) {
+            if ((installPreference == PackageHelper.APP_INSTALL_SDEXT) &&
+                (android.os.Environment.IsSdExtMounted())) {
                 checkSDExt = true;
                 break check_inner;
             } else if (installPreference == PackageHelper.APP_INSTALL_INTERNAL) {
@@ -462,12 +462,14 @@ public class DefaultContainerService extends IntentService {
 
         double pctNandFree = (double)availInternalSize / (double)totalInternalSize;
 
-        // TODO check /sd-ext is mounted
-        StatFs sdextStats = new StatFs(Environment.getSdExtDirectory().getPath());
-        long totalsdextSize = (long)sdextStats.getBlockCount() *
-            (long)sdextStats.getBlockSize();
-        long availsdextSize = (long)sdextStats.getAvailableBlocks() *
-            (long)sdextStats.getBlockSize();
+        long availsdextSize = -1;
+        if (android.os.Environment.IsSdExtMounted()) {
+            StatFs sdextStats = new StatFs(Environment.getSdExtDirectory().getPath());
+            long totalsdextSize = (long)sdextStats.getBlockCount() *
+                (long)sdextStats.getBlockSize();
+            availsdextSize = (long)sdextStats.getAvailableBlocks() *
+                (long)sdextStats.getBlockSize();
+        }
 
         File apkFile = new File(archiveFilePath);
         long pkgLen = apkFile.length();
@@ -544,12 +546,14 @@ public class DefaultContainerService extends IntentService {
         long availInternalSize = (long)internalStats.getAvailableBlocks() *
         (long)internalStats.getBlockSize();
 
-        // TODO check sd-ext is mounted 
-        StatFs sdextStats = new StatFs(Environment.getSdExtDirectory().getPath());
-        long totalsdextSize = (long)sdextStats.getBlockCount() *
-        (long)sdextStats.getBlockSize();
-        long availsdextSize = (long)sdextStats.getAvailableBlocks() *
-        (long)sdextStats.getBlockSize();
+        long availsdextSize = -1;
+        if (android.os.Environment.IsSdExtMounted()) {
+            StatFs sdextStats = new StatFs(Environment.getSdExtDirectory().getPath());
+            long totalsdextSize = (long)sdextStats.getBlockCount() *
+            (long)sdextStats.getBlockSize();
+            availsdextSize = (long)sdextStats.getAvailableBlocks() *
+            (long)sdextStats.getBlockSize();
+        }
 
         double pctNandFree = (double)availInternalSize / (double)totalInternalSize;
         // To make final copy
