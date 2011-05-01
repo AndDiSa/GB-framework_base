@@ -1066,8 +1066,7 @@ status_t SurfaceFlinger::removeLayer_l(const sp<LayerBase>& layerBase)
 
 status_t SurfaceFlinger::purgatorizeLayer_l(const sp<LayerBase>& layerBase)
 {
-    // First add the layer to the purgatory list, which makes sure it won't
-    // go away, then remove it from the main list (through a transaction).
+    // remove the layer from the main list (through a transaction).
     ssize_t err = removeLayer_l(layerBase);
 
     layerBase->onRemoved();
@@ -1452,13 +1451,8 @@ status_t SurfaceFlinger::dump(int fd, const Vector<String16>& args)
             result.append(buffer);
         }
 
-        /*
-         * Dump the visible layer list
-         */
         const LayerVector& currentLayers = mCurrentState.layersSortedByZ;
         const size_t count = currentLayers.size();
-        snprintf(buffer, SIZE, "Visible layers (count = %d)\n", count);
-        result.append(buffer);
         for (size_t i=0 ; i<count ; i++) {
             const sp<LayerBase>& layer(currentLayers[i]);
             layer->dump(result, buffer, SIZE);
@@ -1474,6 +1468,7 @@ status_t SurfaceFlinger::dump(int fd, const Vector<String16>& args)
 
         snprintf(buffer, SIZE, "SurfaceFlinger global state\n");
         result.append(buffer);
+
         mWormholeRegion.dump(result, "WormholeRegion");
         const DisplayHardware& hw(graphicPlane(0).displayHardware());
         snprintf(buffer, SIZE,
@@ -1499,9 +1494,6 @@ status_t SurfaceFlinger::dump(int fd, const Vector<String16>& args)
             result.append(buffer);
         }
 
-        /*
-         * Dump gralloc state
-         */
         const GraphicBufferAllocator& alloc(GraphicBufferAllocator::get());
         alloc.dump(result);
 
@@ -2397,7 +2389,7 @@ ssize_t UserClient::getTokenForSurface(const sp<ISurface>& sur) const
             }
             break;
         }
-        if (++name > 31)
+        if (++name >= SharedBufferStack::NUM_LAYERS_MAX)
             name = NO_MEMORY;
     } while(name >= 0);
 
