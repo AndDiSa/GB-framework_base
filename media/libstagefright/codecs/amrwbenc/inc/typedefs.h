@@ -45,7 +45,7 @@
 *        OSF           only defined if the current platform is an Alpha
 *        PC            only defined if the current platform is a PC
 *        SUN           only defined if the current platform is a Sun
-*        
+*
 *        LSBFIRST      is defined if the byte order on this platform is
 *                      "least significant byte first" -> defined on DEC Alpha
 *                      and PC, undefined on Sun
@@ -68,7 +68,7 @@
 
 /*
 ********************************************************************************
-*                         DEFINITION OF CONSTANTS 
+*                         DEFINITION OF CONSTANTS
 ********************************************************************************
 */
 /*
@@ -197,7 +197,7 @@ typedef int Bool;
 #define     Syn_filt_32      voAWB_Syn_filt_32
 #define     Isf_isp          voAWB_Isf_isp
 #define     Levinson         voAWB_Levinson
-#define     median5          voAWB_median5           
+#define     median5          voAWB_median5
 #define     Pred_lt4         voAWB_Pred_lt4
 #define     Reorder_isf      voAWB_Reorder_isf
 #define     Dpisf_2s_36b     voAWB_Dpisf_2s_36b
@@ -205,6 +205,8 @@ typedef int Bool;
 #define     Dot_product12    voAWB_Dot_product12
 #define     mem_malloc       voAWB_mem_malloc
 #define     mem_free         voAWB_mem_free
+#define     fir_6k_7k        voAWB_fir_6k_7k
+#define     inter4_2         voAWB_inter4_2
 /******************************************************/
 
 #endif  //#define __TYPEDEFS_H__

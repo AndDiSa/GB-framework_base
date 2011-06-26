@@ -48,14 +48,14 @@
 #define assert(_Expression)     ((void)0)
 #endif
 
-#ifdef LINUX
+#ifndef _MSC_VER
 #define __inline static __inline__
 #endif
 
 #define INT_BITS   32
 /*
 ********************************************************************************
-*                         DEFINITION OF CONSTANTS 
+*                         DEFINITION OF CONSTANTS
 ********************************************************************************
 */
 /*
@@ -77,12 +77,12 @@ typedef unsigned short UWord16;
 /*
  ********* define 32 bit signed/unsigned types & constants
  */
-typedef long Word32;
-typedef unsigned long UWord32;
+typedef int Word32;
+typedef unsigned int UWord32;
 
 
 
-#ifdef LINUX
+#ifndef _MSC_VER
 typedef long long Word64;
 typedef unsigned long long UWord64;
 #else
@@ -120,12 +120,12 @@ typedef unsigned __int64 UWord64;
     #define ARMV5TE_L_MULT        1
     #define ARMV5TE_L_MAC         1
     #define ARMV5TE_L_MSU         1
-   
-    
+
+
     #define ARMV5TE_DIV_S         1
     #define ARMV5TE_ROUND         1
     #define ARMV5TE_MULT          1
-    
+
     #define ARMV5TE_NORM_S        1
     #define ARMV5TE_NORM_L        1
 	#define ARMV5TE_L_MPY_LS	  1
@@ -149,7 +149,7 @@ typedef unsigned __int64 UWord64;
 #define ROUND_IS_INLINE                 1   //define round as inline function
 #define L_MAC_IS_INLINE                 1   //define L_mac as inline function
 #define L_ADD_IS_INLINE                 1   //define L_add as inline function
-#define EXTRACT_H_IS_INLINE             1   //define extract_h as inline function 
+#define EXTRACT_H_IS_INLINE             1   //define extract_h as inline function
 #define EXTRACT_L_IS_INLINE             1   //define extract_l as inline function        //???
 #define MULT_R_IS_INLINE                1   //define mult_r as inline function
 #define SHR_R_IS_INLINE                 1   //define shr_r as inline function
@@ -172,6 +172,9 @@ typedef unsigned __int64 UWord64;
 #define  pow2_xy		ADD_PREFIX(pow2_xy)
 #define  L_mpy_ls		ADD_PREFIX(L_mpy_ls)
 #define  L_mpy_wx		ADD_PREFIX(L_mpy_wx)
+#define  TnsEncode		ADD_PREFIX(TnsEncode)
+#define  GetSRIndex		ADD_PREFIX(GetSRIndex)
+#define  WriteBitstream		ADD_PREFIX(WriteBitstream)
 
 #define mem_malloc		ADD_PREFIX(mem_malloc)
 #define mem_free		ADD_PREFIX(mem_free)
