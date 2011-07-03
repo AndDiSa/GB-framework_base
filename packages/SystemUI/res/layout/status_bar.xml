@@ -22,7 +22,8 @@
 <com.android.systemui.statusbar.StatusBarView
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:background="@drawable/statusbar_background"
-    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
     android:focusable="true"
     android:descendantFocusability="afterDescendants"
     >

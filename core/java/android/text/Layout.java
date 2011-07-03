@@ -1816,13 +1816,12 @@ public abstract class Layout {
         // a line that starts with a right-to-left run has 0 at mDirections[0],
         // since the 'first' (ltr) run is zero length.
         //
-        // The code currently assumes that each run is adjacent to the previous
-        // one, progressing in the base line direction.  This isn't sufficient
-        // to handle nested runs, for example numeric text in an rtl context
-        // in an ltr paragraph.
         /* package */ Directions(short[] dirs) {
             mDirections = dirs;
         }
+        boolean hasRTL() {
+            return mDirections.length>1 && mDirections[1]>0;
+	}
     }
 
     /**
