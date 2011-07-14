@@ -1674,7 +1674,7 @@ public final class ActivityManagerService extends ActivityManagerNative
                 if (cr.binding != null && cr.binding.service != null
                         && cr.binding.service.app != null
                         && cr.binding.service.app.lruSeq != mLruSeq) {
-                    updateLruProcessInternalLocked(cr.binding.service.app, oomAdj,
+                    updateLruProcessInternalLocked(cr.binding.service.app, false,
                             updateActivityTime, i+1);
                 }
             }
@@ -1682,7 +1682,7 @@ public final class ActivityManagerService extends ActivityManagerNative
         if (app.conProviders.size() > 0) {
             for (ContentProviderRecord cpr : app.conProviders.keySet()) {
                 if (cpr.app != null && cpr.app.lruSeq != mLruSeq) {
-                    updateLruProcessInternalLocked(cpr.app, oomAdj,
+                    updateLruProcessInternalLocked(cpr.app, false,
                             updateActivityTime, i+1);
                 }
             }
@@ -3678,9 +3678,11 @@ public final class ActivityManagerService extends ActivityManagerNative
                 String[] pkgs = intent.getStringArrayExtra(Intent.EXTRA_PACKAGES);
                 if (pkgs != null) {
                     for (String pkg : pkgs) {
-                        if (forceStopPackageLocked(pkg, -1, false, false, false)) {
-                            setResultCode(Activity.RESULT_OK);
-                            return;
+                        synchronized (ActivityManagerService.this) {
+                         if (forceStopPackageLocked(pkg, -1, false, false, false)) {
+                             setResultCode(Activity.RESULT_OK);
+                             return;
+                         }
                         }
                     }
                 }
@@ -6707,17 +6709,24 @@ public final class ActivityManagerService extends ActivityManagerNative
      * to append various headers to the dropbox log text.
      */
     private void appendDropBoxProcessHeaders(ProcessRecord process, StringBuilder sb) {
+        // Watchdog thread ends up invoking this function (with
+        // a null ProcessRecord) to add the stack file to dropbox.
+        // Do not acquire a lock on this (am) in such cases, as it
+        // could cause a potential deadlock, if and when watchdog
+        // is invoked due to unavailability of lock on am and it
+        // would prevent watchdog from killing system_server.
+        if (process == null) {
+            sb.append("Process: system_server\n");
+            return;
+        }
         // Note: ProcessRecord 'process' is guarded by the service
         // instance.  (notably process.pkgList, which could otherwise change
         // concurrently during execution of this method)
         synchronized (this) {
-            if (process == null || process.pid == MY_PID) {
+            if (process.pid == MY_PID) {
                 sb.append("Process: system_server\n");
             } else {
                 sb.append("Process: ").append(process.processName).append("\n");
-            }
-            if (process == null) {
-                return;
             }
             int flags = process.info.flags;
             IPackageManager pm = AppGlobals.getPackageManager();
