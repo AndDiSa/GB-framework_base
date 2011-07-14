@@ -130,10 +130,7 @@ public abstract class PowerButton {
 
     protected abstract void updateState();
     protected abstract void toggleState();
-<<<<<<< HEAD
-=======
     protected abstract boolean handleLongClick();
->>>>>>> gh/gingerbread
 
     protected void update() {
         updateState();
@@ -163,10 +160,7 @@ public abstract class PowerButton {
         if(mView != null) {
             mView.setTag(mType);
             mView.setOnClickListener(mClickListener);
-<<<<<<< HEAD
-=======
             mView.setOnLongClickListener(mLongClickListener);
->>>>>>> gh/gingerbread
         }
     }
 
@@ -203,8 +197,6 @@ public abstract class PowerButton {
         }
     };
 
-<<<<<<< HEAD
-=======
     private View.OnLongClickListener mLongClickListener = new View.OnLongClickListener() {
         public boolean onLongClick(View v) {
             boolean result = false;
@@ -223,7 +215,6 @@ public abstract class PowerButton {
         }
     };
 
->>>>>>> gh/gingerbread
     public static boolean loadButton(String key, View view) {
         // first make sure we have a valid button
         if(BUTTONS.containsKey(key) && view != null) {
@@ -353,13 +344,10 @@ public abstract class PowerButton {
         GLOBAL_ON_CLICK_LISTENER = listener;
     }
 
-<<<<<<< HEAD
-=======
     public static void setGlobalOnLongClickListener(View.OnLongClickListener listener) {
         GLOBAL_ON_LONG_CLICK_LISTENER = listener;
     }
 
->>>>>>> gh/gingerbread
     protected static PowerButton getLoadedButton(String key) {
         synchronized(BUTTONS_LOADED) {
             if(BUTTONS_LOADED.containsKey(key)) {
