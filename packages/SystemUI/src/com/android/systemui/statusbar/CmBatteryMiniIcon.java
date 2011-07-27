@@ -276,8 +276,10 @@ public class CmBatteryMiniIcon extends ImageView {
         mShowCmBattery = (Settings.System
                 .getInt(resolver, Settings.System.STATUS_BAR_CM_BATTERY, 0) == 1);
 
-        if (mShowCmBattery)
+        if (mShowCmBattery) {
             setVisibility(View.VISIBLE);
+            updateIconCache();
+	}
         else
             setVisibility(View.GONE);
     }

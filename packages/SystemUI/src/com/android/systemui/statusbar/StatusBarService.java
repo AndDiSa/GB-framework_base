@@ -287,7 +287,6 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         mTickerView = sb.findViewById(R.id.ticker);
         mDateView = (DateView)sb.findViewById(R.id.date);
         mCmBatteryMiniIcon = (CmBatteryMiniIcon)sb.findViewById(R.id.CmBatteryMiniIcon);
-	mCmBatteryMiniIcon.updateIconCache();
 
         mExpandedDialog = new ExpandedDialog(context);
         mExpandedView = expanded;
