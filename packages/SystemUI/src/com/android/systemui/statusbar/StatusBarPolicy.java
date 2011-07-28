@@ -608,6 +608,11 @@ public class StatusBarPolicy {
         mSignalStrength = new SignalStrength();
         mBatteryStats = BatteryStatsService.getService();
 
+        // settings observer for cm-battery change
+        SettingsObserver settingsObserver = new SettingsObserver(mHandler);
+        settingsObserver.observe();
+        updateSettings();
+
         // storage
         mStorageManager = (StorageManager) context.getSystemService(Context.STORAGE_SERVICE);
         mStorageManager.registerListener(
