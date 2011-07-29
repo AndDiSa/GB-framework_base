@@ -1341,6 +1341,7 @@ status_t SurfaceFlinger::destroySurface(const sp<LayerBaseClient>& layer)
              * to use the purgatory.
              */
             status_t err = flinger->removeLayer_l(l);
+
             LOGE_IF(err<0 && err != NAME_NOT_FOUND,
                     "error removing layer=%p (%s)", l.get(), strerror(-err));
             return true;
@@ -1466,6 +1467,13 @@ status_t SurfaceFlinger::dump(int fd, const Vector<String16>& args)
             layer->transparentRegionScreen.dump(result, "transparentRegionScreen");
             layer->visibleRegionScreen.dump(result, "visibleRegionScreen");
         }
+
+        /*
+         * Dump SurfaceFlinger global state
+         */
+
+        snprintf(buffer, SIZE, "SurfaceFlinger global state\n");
+        result.append(buffer);
 
         mWormholeRegion.dump(result, "WormholeRegion");
         const DisplayHardware& hw(graphicPlane(0).displayHardware());
