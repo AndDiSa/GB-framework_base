@@ -158,7 +158,8 @@ static void agps_status_callback(AGpsStatus* agps_status)
     uint32_t ipaddr;
     // ipaddr field was not included in original AGpsStatus
     if (agps_status->size >= sizeof(AGpsStatus))
-        ipaddr = agps_status->ipaddr;
+        // ipaddr = agps_status->ipaddr;
+        ipaddr = 0xFFFFFFFF; // TODO: fixme
     else
         ipaddr = 0xFFFFFFFF;
     env->CallVoidMethod(mCallbacksObj, method_reportAGpsStatus,
