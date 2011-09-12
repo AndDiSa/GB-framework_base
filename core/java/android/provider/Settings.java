@@ -3629,6 +3629,12 @@ public final class Settings {
                 "inet_condition_debounce_down_delay";
 
         /**
+         * Whether to enable permissions managment.
+         * @hide
+         */
+        public static final String ENABLE_PERMISSIONS_MANAGMENT = "enable_permissions_managment";
+
+        /**
          * @hide
          */
         public static final String[] SETTINGS_TO_BACKUP = {
