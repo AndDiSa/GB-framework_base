@@ -3632,7 +3632,7 @@ public final class Settings {
          * Whether to enable permissions managment.
          * @hide
          */
-        public static final String ENABLE_PERMISSIONS_MANAGMENT = "enable_permissions_managment";
+        public static final String ENABLE_PERMISSIONS_MANAGEMENT = "enable_permissions_managment";
 
         /**
          * @hide
