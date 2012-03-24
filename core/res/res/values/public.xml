@@ -1275,5 +1275,16 @@
   <public type="style" name="TextAppearance.StatusBar.Icon" id="0x01030066" />
   <public type="style" name="TextAppearance.StatusBar.EventContent" id="0x01030067" />
   <public type="style" name="TextAppearance.StatusBar.EventContent.Title" id="0x01030068" />
+
+  <public type="color" name="holo_blue_light" id="0x01060012" />
+  <public type="color" name="holo_blue_dark" id="0x01060013" />
+  <public type="color" name="holo_green_light" id="0x01060014" />
+  <public type="color" name="holo_green_dark" id="0x01060015" />
+  <public type="color" name="holo_red_light" id="0x01060016" />
+  <public type="color" name="holo_red_dark" id="0x01060017" />
+  <public type="color" name="holo_orange_light" id="0x01060018" />
+  <public type="color" name="holo_orange_dark" id="0x01060019" />
+  <public type="color" name="holo_purple" id="0x0106001a" />
+  <public type="color" name="holo_blue_bright" id="0x0106001b" />
   
 </resources>

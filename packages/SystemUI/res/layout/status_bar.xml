@@ -53,6 +53,7 @@
 
         <com.android.systemui.statusbar.CmBatteryText
             android:textAppearance="@*android:style/TextAppearance.StatusBar.Icon"
+            android:textColor="@android:color/holo_blue_light"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:paddingRight="2dip"
@@ -69,6 +70,7 @@
 
         <com.android.systemui.statusbar.Clock
             android:textAppearance="@*android:style/TextAppearance.StatusBar.Icon"
+            android:textColor="@android:color/holo_blue_light"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:singleLine="true"
@@ -120,6 +122,7 @@
 
     <com.android.systemui.statusbar.DateView android:id="@+id/date"
         android:textAppearance="@*android:style/TextAppearance.StatusBar.Icon"
+        android:textColor="@android:color/holo_blue_light"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:singleLine="true"
