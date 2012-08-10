@@ -273,7 +273,7 @@ public class ZygoteInit {
             runtime.setTargetHeapUtilization(0.8f);
 
             // Start with a clean slate.
-            runtime.gcSoftReferences();
+            System.gc();
             runtime.runFinalizationSync();
             Debug.startAllocCounting();
 
@@ -300,7 +300,7 @@ public class ZygoteInit {
                                 Log.v(TAG,
                                     " GC at " + Debug.getGlobalAllocSize());
                             }
-                            runtime.gcSoftReferences();
+                            System.gc();
                             runtime.runFinalizationSync();
                             Debug.resetGlobalAllocSize();
                         }
@@ -387,7 +387,7 @@ public class ZygoteInit {
 
         Debug.startAllocCounting();
         try {
-            runtime.gcSoftReferences();
+            System.gc();
             runtime.runFinalizationSync();
             mResources = Resources.getSystem();
             mResources.startPreloading();
@@ -423,7 +423,7 @@ public class ZygoteInit {
                 if (Config.LOGV) {
                     Log.v(TAG, " GC at " + Debug.getGlobalAllocSize());
                 }
-                runtime.gcSoftReferences();
+                System.gc();
                 runtime.runFinalizationSync();
                 Debug.resetGlobalAllocSize();
             }
@@ -446,7 +446,7 @@ public class ZygoteInit {
                 if (Config.LOGV) {
                     Log.v(TAG, " GC at " + Debug.getGlobalAllocSize());
                 }
-                runtime.gcSoftReferences();
+                System.gc();
                 runtime.runFinalizationSync();
                 Debug.resetGlobalAllocSize();
             }
@@ -477,11 +477,11 @@ public class ZygoteInit {
         /* runFinalizationSync() lets finalizers be called in Zygote,
          * which doesn't have a HeapWorker thread.
          */
-        runtime.gcSoftReferences();
+        System.gc();
         runtime.runFinalizationSync();
-        runtime.gcSoftReferences();
+        System.gc();
         runtime.runFinalizationSync();
-        runtime.gcSoftReferences();
+        System.gc();
         runtime.runFinalizationSync();
     }
 
