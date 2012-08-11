@@ -64,7 +64,9 @@ public class ZygoteInit {
     private static final int LOG_BOOT_PROGRESS_PRELOAD_END = 3030;
 
     /** when preloading, GC after allocating this many bytes */
-    private static final int PRELOAD_GC_THRESHOLD = 50000;
+    /*private static final int PRELOAD_GC_THRESHOLD = 50000;*/
+    /*For DS increase to 5MB from origial ~50k*/
+    private static final int PRELOAD_GC_THRESHOLD = (1024 * 1024 * 5);
 
     public static final String USAGE_STRING =
             " <\"true\"|\"false\" for startSystemServer>";
@@ -225,12 +227,18 @@ public class ZygoteInit {
     private static final int ROOT_UID = 0;
     private static final int ROOT_GID = 0;
 
+    private static final int EEXIST = 17;
+
     /**
      * Sets effective user ID.
      */
     private static void setEffectiveUser(int uid) {
         int errno = setreuid(ROOT_UID, uid);
-        if (errno != 0) {
+	if (errno == EEXIST) {
+	    // reported if uid is already good
+	    Log.d(TAG, "setreuid() error ignored, same uid.");
+	}
+	else if (errno != 0) {
             Log.e(TAG, "setreuid() failed. errno: " + errno);
         }
     }
@@ -277,9 +285,10 @@ public class ZygoteInit {
             runtime.runFinalizationSync();
             Debug.startAllocCounting();
 
+            BufferedReader br = null;
+
             try {
-                BufferedReader br
-                    = new BufferedReader(new InputStreamReader(is), 256);
+                br = new BufferedReader(new InputStreamReader(is), 256);
 
                 int count = 0;
                 String line;
@@ -324,6 +333,11 @@ public class ZygoteInit {
             } catch (IOException e) {
                 Log.e(TAG, "Error reading " + PRELOADED_CLASSES + ".", e);
             } finally {
+                try {
+                    br.close();
+                } catch (final IOException e) {
+                    Log.w(TAG, "Error closing reader: " + PRELOADED_CLASSES + ".", e);
+                }
                 // Restore default.
                 runtime.setTargetHeapUtilization(defaultUtilization);
 
@@ -851,4 +865,3 @@ public class ZygoteInit {
         }
     }
 }
-
