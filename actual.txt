@@ -1,0 +1,3 @@
+https://github.com/AndDiSa/GB-framework_base/commit/a11e24e534194204f70b4a23af9c99276b6026b8
+core/res/res/drawable-mdpi/stat_sys_secure.png
+
